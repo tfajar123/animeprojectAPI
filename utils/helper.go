@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -11,6 +13,9 @@ import (
 func ProcessImageUpload(c *gin.Context, oldPath string, folderName string) (string, error) {
 	file, err := c.FormFile("image")
 	if err != nil {
+		if errors.Is(err, http.ErrMissingFile) {
+			return oldPath, nil
+		}
 		return oldPath, err
 	}
 
@@ -24,4 +29,11 @@ func ProcessImageUpload(c *gin.Context, oldPath string, folderName string) (stri
 	}
 
 	return newPath, nil
+}
+
+func IfEmpty[T comparable](newVal, oldVal T, zeroValue T) T {
+	if newVal == zeroValue {
+		return oldVal
+	}
+	return newVal
 }

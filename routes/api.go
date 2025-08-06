@@ -11,4 +11,10 @@ func RegisterRoutes(r *gin.Engine) {
 	r.PUT("/animes/:id", controller.UpdateAnime)
 	r.DELETE("/animes/:id", controller.DeleteAnime)
 	r.GET("/animes", controller.GetAnimes)
+
+	r.GET("/episodes/:id", controller.GetEpisodeByID)
+	r.POST("/episodes", controller.CreateEpisode)
+	r.PUT("/episodes/:id", controller.UpdateEpisode)
+	r.DELETE("/episodes/:id", controller.DeleteEpisode)
+	r.GET("/episodes/animes/:id", controller.GetEpisodesByAnimeID)
 }

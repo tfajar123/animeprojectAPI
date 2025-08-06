@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -59,10 +58,6 @@ func GetAnimes(c *gin.Context) {
 func CreateAnime(c *gin.Context) {
 	queries := db.New(db.DBPool)
 
-
-	fmt.Println("title:", c.PostForm("title"))
-	fmt.Println("description:", c.PostForm("description"))
-	fmt.Println("type:", c.PostForm("type"))
 	var anime CreateAnimeInput
 	if err := c.ShouldBind(&anime); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -111,6 +106,10 @@ func UpdateAnime(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	anime.Title       = utils.IfEmpty(anime.Title, oldAnime.Title, "")
+	anime.Description = utils.IfEmpty(anime.Description, oldAnime.Description.String, "")
+	anime.Type        = utils.IfEmpty(anime.Type, oldAnime.Type.String, "")
 
 	image, err := utils.ProcessImageUpload(c, oldAnime.Image.String, "animes")
 	if err != nil {
