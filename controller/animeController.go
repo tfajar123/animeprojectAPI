@@ -21,6 +21,7 @@ type UpdateAnimeInput struct {
 	Title       string `form:"title"`
 	Description string `form:"description"`
 	Type        string `form:"type"`
+	Slug		string `form:"slug"`
 }
 
 func GetAnimeByID(c *gin.Context) {
@@ -70,11 +71,21 @@ func CreateAnime(c *gin.Context) {
 		return
 	}
 
+	slug := utils.Slugify(anime.Title)
+	if existing, err := queries.GetAnimeBySlug(c, slug); err == nil {
+		c.JSON(http.StatusConflict, gin.H{
+			"error": "Judul anime ini sudah ada",
+			"anime": existing,
+		})
+		return
+	}
+
 	newAnime, err := queries.CreateAnime(c, db.CreateAnimeParams{
 		Title:       anime.Title,
 		Description: pgtype.Text{String: anime.Description, Valid: true},
 		Image:       pgtype.Text{String: image, Valid: true},
 		Type:        pgtype.Text{String: anime.Type, Valid: true},
+		Slug:        slug,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
@@ -110,6 +121,20 @@ func UpdateAnime(c *gin.Context) {
 	anime.Title       = utils.IfEmpty(anime.Title, oldAnime.Title, "")
 	anime.Description = utils.IfEmpty(anime.Description, oldAnime.Description.String, "")
 	anime.Type        = utils.IfEmpty(anime.Type, oldAnime.Type.String, "")
+	
+	if anime.Title != oldAnime.Title {
+		slug := utils.Slugify(anime.Title)
+		if existing, err := queries.GetAnimeBySlug(c, slug); err == nil && existing.ID != oldAnime.ID {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "Judul anime ini sudah ada",
+				"anime": existing,
+			})
+			return
+		}
+		anime.Slug = slug
+	} else {
+		anime.Slug = oldAnime.Slug
+	}
 
 	image, err := utils.ProcessImageUpload(c, oldAnime.Image.String, "animes")
 	if err != nil {
@@ -123,6 +148,7 @@ func UpdateAnime(c *gin.Context) {
 		Description: pgtype.Text{String: anime.Description, Valid: true},
 		Image:       pgtype.Text{String: image, Valid: true},
 		Type:        pgtype.Text{String: anime.Type, Valid: true},
+		Slug:        pgtype.Text{String: anime.Slug, Valid: true}.String,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

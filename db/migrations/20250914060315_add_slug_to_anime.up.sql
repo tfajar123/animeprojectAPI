@@ -1,0 +1,5 @@
+ALTER TABLE anime
+ADD COLUMN slug VARCHAR(255) UNIQUE NOT NULL DEFAULT '';
+
+UPDATE anime
+SET slug = LOWER(REPLACE(title, ' ', '-'));

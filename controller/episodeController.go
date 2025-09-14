@@ -12,46 +12,42 @@ import (
 type CreateEpisodeInput struct {
 	Episode_number int    `form:"episode_number" binding:"required"`
 	Episode_url    string `form:"episode_url" binding:"required"`
-	Anime_id       int    `form:"anime_id"`
 }
 
 type UpdateEpisodeInput struct {
-	Episode_number int    `form:"episode_number"`
 	Episode_url    string `form:"episode_url"`
-	Anime_id       int    `form:"anime_id"`
 }
 
-func GetEpisodeByID(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-		return
-	}
+func GetEpisodeBySlug(c *gin.Context) {
+    animeSlug := c.Param("animeSlug")
+    episodeNumStr := c.Param("episodeNumber")
 
-	queries := db.New(db.DBPool)
+    episodeNum, err := strconv.Atoi(episodeNumStr)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid episode number"})
+        return
+    }
 
-	episode, err := queries.GetAnime(c, int32(id))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+    queries := db.New(db.DBPool)
 
-	c.JSON(http.StatusOK, episode)
+    episode, err := queries.GetEpisodeBySlugAndNumber(c, db.GetEpisodeBySlugAndNumberParams{
+        Slug:          animeSlug,
+        EpisodeNumber: int32(episodeNum),
+    })
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "Episode not found"})
+        return
+    }
+
+    c.JSON(http.StatusOK, episode)
 }
 
 func GetEpisodesByAnimeID(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-		return
-	}
-	
+	animeSlug := c.Param("animeSlug")
 	
 	queries := db.New(db.DBPool) 
 
-	episodes, err := queries.GetEpisodesByAnimeId(c, int32(id))
+	episodes, err := queries.GetEpisodesByAnimeId(c, animeSlug)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -62,6 +58,14 @@ func GetEpisodesByAnimeID(c *gin.Context) {
 }
 
 func CreateEpisode(c *gin.Context) {
+	animeSlug := c.Param("animeSlug")
+
+	anime, err := db.New(db.DBPool).GetAnimeBySlug(c, animeSlug)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Anime not found"})
+		return
+	}
+	
 	queries := db.New(db.DBPool)
 
 	var episode CreateEpisodeInput
@@ -70,10 +74,19 @@ func CreateEpisode(c *gin.Context) {
 		return
 	}
 
+	_, err = queries.CheckEpisodeExists(c, db.CheckEpisodeExistsParams{
+		EpisodeNumber: int32(episode.Episode_number),
+		AnimeID:       int32(anime.ID),
+	})
+	if err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Episode already exists"})
+		return
+	}
+
 	newEpisode, err := queries.CreateEpisode(c, db.CreateEpisodeParams{
 		EpisodeNumber: int32(episode.Episode_number),
 		EpisodeUrl:    episode.Episode_url,
-		AnimeID:       int32(episode.Anime_id),
+		AnimeID:       int32(anime.ID),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
@@ -86,14 +99,19 @@ func CreateEpisode(c *gin.Context) {
 func UpdateEpisode(c *gin.Context) {
 	queries := db.New(db.DBPool)
 
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-		return
-	}
+	animeSlug := c.Param("animeSlug")
+    episodeNumStr := c.Param("episodeNumber")
 
-	oldEpisode , err := queries.GetEpisode(c, int32(id))
+    episodeNum, err := strconv.Atoi(episodeNumStr)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid episode number"})
+        return
+    }
+
+	oldEpisode , err := queries.GetEpisodeBySlugAndNumber(c, db.GetEpisodeBySlugAndNumberParams{
+        Slug:          animeSlug,
+        EpisodeNumber: int32(episodeNum),
+    })
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -104,12 +122,10 @@ func UpdateEpisode(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	episode.Episode_number = utils.IfEmpty(episode.Episode_number, int(oldEpisode.EpisodeNumber), 0)
 	episode.Episode_url = utils.IfEmpty(episode.Episode_url, oldEpisode.EpisodeUrl, "")
 
 	updatedEpisode, err := queries.UpdateEpisode(c, db.UpdateEpisodeParams{
-		ID:            int32(id),
-		EpisodeNumber: int32(episode.Episode_number),
+		ID:            int32(oldEpisode.EpisodeID),
 		EpisodeUrl:    episode.Episode_url,
 	})
 	if err != nil {
@@ -121,16 +137,23 @@ func UpdateEpisode(c *gin.Context) {
 }
 
 func DeleteEpisode(c *gin.Context) {
+	
+	animeSlug := c.Param("animeSlug")
+    episodeNumStr := c.Param("episodeNumber")
+	
+    episodeNum, err := strconv.Atoi(episodeNumStr)
+    if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid episode number"})
+        return
+    }
 	queries := db.New(db.DBPool)
+	
+    episode, err := queries.GetEpisodeBySlugAndNumber(c, db.GetEpisodeBySlugAndNumberParams{
+        Slug:          animeSlug,
+        EpisodeNumber: int32(episodeNum),
+    })
 
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-		return
-	}
-
-	err = queries.DeleteEpisode(c, int32(id))
+	err = queries.DeleteEpisode(c, int32(episode.EpisodeID))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

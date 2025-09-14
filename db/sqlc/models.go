@@ -14,6 +14,7 @@ type Anime struct {
 	Description pgtype.Text      `json:"description"`
 	Image       pgtype.Text      `json:"image"`
 	Type        pgtype.Text      `json:"type"`
+	Slug        string           `json:"slug"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
 	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 }
@@ -26,6 +27,15 @@ type AnimeGenre struct {
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
+type Comment struct {
+	ID        int32            `json:"id"`
+	Content   string           `json:"content"`
+	UserID    int32            `json:"user_id"`
+	EpisodeID int32            `json:"episode_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
 type Episode struct {
 	ID            int32            `json:"id"`
 	EpisodeNumber int32            `json:"episode_number"`
@@ -33,6 +43,13 @@ type Episode struct {
 	AnimeID       int32            `json:"anime_id"`
 	CreatedAt     pgtype.Timestamp `json:"created_at"`
 	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+}
+
+type Favorite struct {
+	ID        int32            `json:"id"`
+	UserID    int32            `json:"user_id"`
+	AnimeID   int32            `json:"anime_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
 }
 
 type Genre struct {
