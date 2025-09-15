@@ -1,0 +1,1 @@
+ALTER TABLE anime ADD COLUMN image_port VARCHAR(255);

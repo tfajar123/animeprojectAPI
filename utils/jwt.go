@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -9,9 +10,9 @@ import (
 
 const secretKey = "secret"
 
-func GenerateToken(email string, userID int32) (string, error) {
+func GenerateToken(username string, userID int32) (string, error) {
 	token := jwt.NewWithClaims((jwt.SigningMethodHS256), jwt.MapClaims{
-		"email": email,
+		"username": username,
 		"user_id": userID,
 		"exp" : time.Now().Add(time.Hour * 168).Unix(),
 	})
@@ -20,6 +21,8 @@ func GenerateToken(email string, userID int32) (string, error) {
 }
 
 func VerifyToken(token string) (int32, error) {
+	token = strings.TrimSpace(strings.TrimPrefix(token, "Bearer "))
+	
 	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error){
 		_, ok := token.Method.(*jwt.SigningMethodHMAC)
 

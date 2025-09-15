@@ -11,6 +11,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const checkAnimeGenreExists = `-- name: CheckAnimeGenreExists :one
+SELECT id, anime_id, genre_id, created_at, updated_at FROM anime_genre WHERE anime_id = $1 AND genre_id = $2
+`
+
+type CheckAnimeGenreExistsParams struct {
+	AnimeID int32 `json:"anime_id"`
+	GenreID int32 `json:"genre_id"`
+}
+
+func (q *Queries) CheckAnimeGenreExists(ctx context.Context, arg CheckAnimeGenreExistsParams) (AnimeGenre, error) {
+	row := q.db.QueryRow(ctx, checkAnimeGenreExists, arg.AnimeID, arg.GenreID)
+	var i AnimeGenre
+	err := row.Scan(
+		&i.ID,
+		&i.AnimeID,
+		&i.GenreID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const checkEpisodeExists = `-- name: CheckEpisodeExists :one
 SELECT id, episode_number, episode_url, anime_id, created_at, updated_at FROM episode WHERE episode_number = $1 AND anime_id = $2
 `
@@ -35,7 +57,7 @@ func (q *Queries) CheckEpisodeExists(ctx context.Context, arg CheckEpisodeExists
 }
 
 const createAnime = `-- name: CreateAnime :one
-INSERT INTO anime (title, description, image, type, slug) VALUES ($1, $2, $3, $4, $5) RETURNING id, title, description, image, type, slug, created_at, updated_at
+INSERT INTO anime (title, description, image, type, slug, image_port) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, title, description, image, image_port, type, slug, created_at, updated_at
 `
 
 type CreateAnimeParams struct {
@@ -44,6 +66,7 @@ type CreateAnimeParams struct {
 	Image       pgtype.Text `json:"image"`
 	Type        pgtype.Text `json:"type"`
 	Slug        string      `json:"slug"`
+	ImagePort   pgtype.Text `json:"image_port"`
 }
 
 func (q *Queries) CreateAnime(ctx context.Context, arg CreateAnimeParams) (Anime, error) {
@@ -53,6 +76,7 @@ func (q *Queries) CreateAnime(ctx context.Context, arg CreateAnimeParams) (Anime
 		arg.Image,
 		arg.Type,
 		arg.Slug,
+		arg.ImagePort,
 	)
 	var i Anime
 	err := row.Scan(
@@ -60,6 +84,7 @@ func (q *Queries) CreateAnime(ctx context.Context, arg CreateAnimeParams) (Anime
 		&i.Title,
 		&i.Description,
 		&i.Image,
+		&i.ImagePort,
 		&i.Type,
 		&i.Slug,
 		&i.CreatedAt,
@@ -160,15 +185,21 @@ func (q *Queries) CreateFavorite(ctx context.Context, arg CreateFavoriteParams) 
 }
 
 const createGenre = `-- name: CreateGenre :one
-INSERT INTO genre (name) VALUES ($1) RETURNING id, name, created_at, updated_at
+INSERT INTO genre (name, slug) VALUES ($1, $2) RETURNING id, name, slug, created_at, updated_at
 `
 
-func (q *Queries) CreateGenre(ctx context.Context, name string) (Genre, error) {
-	row := q.db.QueryRow(ctx, createGenre, name)
+type CreateGenreParams struct {
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+}
+
+func (q *Queries) CreateGenre(ctx context.Context, arg CreateGenreParams) (Genre, error) {
+	row := q.db.QueryRow(ctx, createGenre, arg.Name, arg.Slug)
 	var i Genre
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.Slug,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -176,7 +207,7 @@ func (q *Queries) CreateGenre(ctx context.Context, name string) (Genre, error) {
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email, password, created_at, updated_at
+INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email, password, role, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -193,6 +224,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Username,
 		&i.Email,
 		&i.Password,
+		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -267,18 +299,19 @@ func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
 	return err
 }
 
-const getAnime = `-- name: GetAnime :one
-SELECT id, title, description, image, type, slug, created_at, updated_at FROM anime WHERE id = $1
+const getAnimeById = `-- name: GetAnimeById :one
+SELECT id, title, description, image, image_port, type, slug, created_at, updated_at FROM anime WHERE id = $1
 `
 
-func (q *Queries) GetAnime(ctx context.Context, id int32) (Anime, error) {
-	row := q.db.QueryRow(ctx, getAnime, id)
+func (q *Queries) GetAnimeById(ctx context.Context, id int32) (Anime, error) {
+	row := q.db.QueryRow(ctx, getAnimeById, id)
 	var i Anime
 	err := row.Scan(
 		&i.ID,
 		&i.Title,
 		&i.Description,
 		&i.Image,
+		&i.ImagePort,
 		&i.Type,
 		&i.Slug,
 		&i.CreatedAt,
@@ -288,7 +321,7 @@ func (q *Queries) GetAnime(ctx context.Context, id int32) (Anime, error) {
 }
 
 const getAnimeBySlug = `-- name: GetAnimeBySlug :one
-SELECT id, title, description, image, type, slug, created_at, updated_at FROM anime WHERE slug = $1 LIMIT 1
+SELECT id, title, description, image, image_port, type, slug, created_at, updated_at FROM anime WHERE slug = $1 LIMIT 1
 `
 
 func (q *Queries) GetAnimeBySlug(ctx context.Context, slug string) (Anime, error) {
@@ -299,6 +332,7 @@ func (q *Queries) GetAnimeBySlug(ctx context.Context, slug string) (Anime, error
 		&i.Title,
 		&i.Description,
 		&i.Image,
+		&i.ImagePort,
 		&i.Type,
 		&i.Slug,
 		&i.CreatedAt,
@@ -308,7 +342,7 @@ func (q *Queries) GetAnimeBySlug(ctx context.Context, slug string) (Anime, error
 }
 
 const getAnimes = `-- name: GetAnimes :many
-SELECT id, title, description, image, type, slug, created_at, updated_at FROM anime ORDER BY id DESC
+SELECT id, title, description, image, image_port, type, slug, created_at, updated_at FROM anime ORDER BY id DESC
 `
 
 func (q *Queries) GetAnimes(ctx context.Context) ([]Anime, error) {
@@ -325,6 +359,7 @@ func (q *Queries) GetAnimes(ctx context.Context) ([]Anime, error) {
 			&i.Title,
 			&i.Description,
 			&i.Image,
+			&i.ImagePort,
 			&i.Type,
 			&i.Slug,
 			&i.CreatedAt,
@@ -341,7 +376,7 @@ func (q *Queries) GetAnimes(ctx context.Context) ([]Anime, error) {
 }
 
 const getAnimesByGenreId = `-- name: GetAnimesByGenreId :many
-SELECT id, title, description, image, type, slug, created_at, updated_at FROM anime WHERE id IN (SELECT anime_id FROM anime_genre WHERE genre_id = $1)
+SELECT id, title, description, image, image_port, type, slug, created_at, updated_at FROM anime WHERE id IN (SELECT anime_id FROM anime_genre WHERE genre_id = $1)
 `
 
 func (q *Queries) GetAnimesByGenreId(ctx context.Context, genreID int32) ([]Anime, error) {
@@ -358,6 +393,7 @@ func (q *Queries) GetAnimesByGenreId(ctx context.Context, genreID int32) ([]Anim
 			&i.Title,
 			&i.Description,
 			&i.Image,
+			&i.ImagePort,
 			&i.Type,
 			&i.Slug,
 			&i.CreatedAt,
@@ -416,6 +452,7 @@ SELECT
     a.slug AS anime_slug,
     a.description AS anime_description,
     a.image AS anime_image,
+    a.image_port AS anime_image_port,
     a.type AS anime_type
 FROM episode e
 JOIN anime a ON e.anime_id = a.id
@@ -439,6 +476,7 @@ type GetEpisodeBySlugAndNumberRow struct {
 	AnimeSlug        string           `json:"anime_slug"`
 	AnimeDescription pgtype.Text      `json:"anime_description"`
 	AnimeImage       pgtype.Text      `json:"anime_image"`
+	AnimeImagePort   pgtype.Text      `json:"anime_image_port"`
 	AnimeType        pgtype.Text      `json:"anime_type"`
 }
 
@@ -456,17 +494,18 @@ func (q *Queries) GetEpisodeBySlugAndNumber(ctx context.Context, arg GetEpisodeB
 		&i.AnimeSlug,
 		&i.AnimeDescription,
 		&i.AnimeImage,
+		&i.AnimeImagePort,
 		&i.AnimeType,
 	)
 	return i, err
 }
 
-const getEpisodesByAnimeId = `-- name: GetEpisodesByAnimeId :many
+const getEpisodesByAnimeSlug = `-- name: GetEpisodesByAnimeSlug :many
 SELECT e.id, e.episode_number, e.episode_url, e.anime_id, e.created_at, e.updated_at FROM episode e JOIN anime a ON e.anime_id = a.id WHERE a.slug = $1 ORDER BY e.episode_number ASC
 `
 
-func (q *Queries) GetEpisodesByAnimeId(ctx context.Context, slug string) ([]Episode, error) {
-	rows, err := q.db.Query(ctx, getEpisodesByAnimeId, slug)
+func (q *Queries) GetEpisodesByAnimeSlug(ctx context.Context, slug string) ([]Episode, error) {
+	rows, err := q.db.Query(ctx, getEpisodesByAnimeSlug, slug)
 	if err != nil {
 		return nil, err
 	}
@@ -492,12 +531,12 @@ func (q *Queries) GetEpisodesByAnimeId(ctx context.Context, slug string) ([]Epis
 	return items, nil
 }
 
-const getFavoritesByUserId = `-- name: GetFavoritesByUserId :many
-SELECT id, user_id, anime_id, created_at FROM favorites WHERE user_id = $1
+const getFavoritesById = `-- name: GetFavoritesById :many
+SELECT id, user_id, anime_id, created_at FROM favorites WHERE id = $1
 `
 
-func (q *Queries) GetFavoritesByUserId(ctx context.Context, userID int32) ([]Favorite, error) {
-	rows, err := q.db.Query(ctx, getFavoritesByUserId, userID)
+func (q *Queries) GetFavoritesById(ctx context.Context, id int32) ([]Favorite, error) {
+	rows, err := q.db.Query(ctx, getFavoritesById, id)
 	if err != nil {
 		return nil, err
 	}
@@ -521,16 +560,17 @@ func (q *Queries) GetFavoritesByUserId(ctx context.Context, userID int32) ([]Fav
 	return items, nil
 }
 
-const getGenre = `-- name: GetGenre :one
-SELECT id, name, created_at, updated_at FROM genre WHERE id = $1
+const getGenreBySlug = `-- name: GetGenreBySlug :one
+SELECT id, name, slug, created_at, updated_at FROM genre WHERE slug = $1
 `
 
-func (q *Queries) GetGenre(ctx context.Context, id int32) (Genre, error) {
-	row := q.db.QueryRow(ctx, getGenre, id)
+func (q *Queries) GetGenreBySlug(ctx context.Context, slug string) (Genre, error) {
+	row := q.db.QueryRow(ctx, getGenreBySlug, slug)
 	var i Genre
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.Slug,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -538,7 +578,7 @@ func (q *Queries) GetGenre(ctx context.Context, id int32) (Genre, error) {
 }
 
 const getGenres = `-- name: GetGenres :many
-SELECT id, name, created_at, updated_at FROM genre
+SELECT id, name, slug, created_at, updated_at FROM genre
 `
 
 func (q *Queries) GetGenres(ctx context.Context) ([]Genre, error) {
@@ -553,6 +593,7 @@ func (q *Queries) GetGenres(ctx context.Context) ([]Genre, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.Slug,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -567,7 +608,7 @@ func (q *Queries) GetGenres(ctx context.Context) ([]Genre, error) {
 }
 
 const getGenresByAnimeId = `-- name: GetGenresByAnimeId :many
-SELECT id, name, created_at, updated_at FROM genre WHERE id IN (SELECT genre_id FROM anime_genre WHERE anime_id = $1)
+SELECT id, name, slug, created_at, updated_at FROM genre WHERE id IN (SELECT genre_id FROM anime_genre WHERE anime_id = $1)
 `
 
 func (q *Queries) GetGenresByAnimeId(ctx context.Context, animeID int32) ([]Genre, error) {
@@ -582,6 +623,7 @@ func (q *Queries) GetGenresByAnimeId(ctx context.Context, animeID int32) ([]Genr
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.Slug,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -596,7 +638,7 @@ func (q *Queries) GetGenresByAnimeId(ctx context.Context, animeID int32) ([]Genr
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, username, email, password, created_at, updated_at FROM users WHERE id = $1
+SELECT id, username, email, password, role, created_at, updated_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) {
@@ -607,6 +649,7 @@ func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) {
 		&i.Username,
 		&i.Email,
 		&i.Password,
+		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -614,7 +657,7 @@ func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) {
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, email, password, created_at, updated_at FROM users WHERE username = $1
+SELECT id, username, email, password, role, created_at, updated_at FROM users WHERE username = $1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -625,6 +668,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.Username,
 		&i.Email,
 		&i.Password,
+		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -632,7 +676,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 }
 
 const updateAnime = `-- name: UpdateAnime :one
-UPDATE anime SET title = $2, description = $3, image = $4, type = $5, slug = $6 WHERE id = $1 RETURNING id, title, description, image, type, slug, created_at, updated_at
+UPDATE anime SET title = $2, description = $3, image = $4, type = $5, slug = $6, image_port = $7 WHERE id = $1 RETURNING id, title, description, image, image_port, type, slug, created_at, updated_at
 `
 
 type UpdateAnimeParams struct {
@@ -642,6 +686,7 @@ type UpdateAnimeParams struct {
 	Image       pgtype.Text `json:"image"`
 	Type        pgtype.Text `json:"type"`
 	Slug        string      `json:"slug"`
+	ImagePort   pgtype.Text `json:"image_port"`
 }
 
 func (q *Queries) UpdateAnime(ctx context.Context, arg UpdateAnimeParams) (Anime, error) {
@@ -652,6 +697,7 @@ func (q *Queries) UpdateAnime(ctx context.Context, arg UpdateAnimeParams) (Anime
 		arg.Image,
 		arg.Type,
 		arg.Slug,
+		arg.ImagePort,
 	)
 	var i Anime
 	err := row.Scan(
@@ -659,6 +705,7 @@ func (q *Queries) UpdateAnime(ctx context.Context, arg UpdateAnimeParams) (Anime
 		&i.Title,
 		&i.Description,
 		&i.Image,
+		&i.ImagePort,
 		&i.Type,
 		&i.Slug,
 		&i.CreatedAt,
@@ -714,20 +761,22 @@ func (q *Queries) UpdateEpisode(ctx context.Context, arg UpdateEpisodeParams) (E
 }
 
 const updateGenre = `-- name: UpdateGenre :one
-UPDATE genre SET name = $2 WHERE id = $1 RETURNING id, name, created_at, updated_at
+UPDATE genre SET name = $2, slug = $3 WHERE id = $1 RETURNING id, name, slug, created_at, updated_at
 `
 
 type UpdateGenreParams struct {
 	ID   int32  `json:"id"`
 	Name string `json:"name"`
+	Slug string `json:"slug"`
 }
 
 func (q *Queries) UpdateGenre(ctx context.Context, arg UpdateGenreParams) (Genre, error) {
-	row := q.db.QueryRow(ctx, updateGenre, arg.ID, arg.Name)
+	row := q.db.QueryRow(ctx, updateGenre, arg.ID, arg.Name, arg.Slug)
 	var i Genre
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.Slug,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -735,7 +784,7 @@ func (q *Queries) UpdateGenre(ctx context.Context, arg UpdateGenreParams) (Genre
 }
 
 const updateUser = `-- name: UpdateUser :one
-UPDATE users SET username = $2, email = $3, password = $4, updated_at = NOW() WHERE id = $1 RETURNING id, username, email, password, created_at, updated_at
+UPDATE users SET username = $2, email = $3, password = $4, updated_at = NOW() WHERE id = $1 RETURNING id, username, email, password, role, created_at, updated_at
 `
 
 type UpdateUserParams struct {
@@ -758,6 +807,31 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.Username,
 		&i.Email,
 		&i.Password,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateUserRole = `-- name: UpdateUserRole :one
+UPDATE users SET role = $2 WHERE id = $1 RETURNING id, username, email, password, role, created_at, updated_at
+`
+
+type UpdateUserRoleParams struct {
+	ID   int32  `json:"id"`
+	Role string `json:"role"`
+}
+
+func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserRole, arg.ID, arg.Role)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.Password,
+		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

@@ -13,6 +13,7 @@ type Anime struct {
 	Title       string           `json:"title"`
 	Description pgtype.Text      `json:"description"`
 	Image       pgtype.Text      `json:"image"`
+	ImagePort   pgtype.Text      `json:"image_port"`
 	Type        pgtype.Text      `json:"type"`
 	Slug        string           `json:"slug"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
@@ -55,6 +56,7 @@ type Favorite struct {
 type Genre struct {
 	ID        int32            `json:"id"`
 	Name      string           `json:"name"`
+	Slug      string           `json:"slug"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
@@ -64,6 +66,7 @@ type User struct {
 	Username  string           `json:"username"`
 	Email     string           `json:"email"`
 	Password  string           `json:"password"`
+	Role      string           `json:"role"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }

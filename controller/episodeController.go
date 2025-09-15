@@ -42,21 +42,6 @@ func GetEpisodeBySlug(c *gin.Context) {
     c.JSON(http.StatusOK, episode)
 }
 
-func GetEpisodesByAnimeID(c *gin.Context) {
-	animeSlug := c.Param("animeSlug")
-	
-	queries := db.New(db.DBPool) 
-
-	episodes, err := queries.GetEpisodesByAnimeId(c, animeSlug)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, episodes)
-}
-
 func CreateEpisode(c *gin.Context) {
 	animeSlug := c.Param("animeSlug")
 

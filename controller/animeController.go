@@ -24,24 +24,61 @@ type UpdateAnimeInput struct {
 	Slug		string `form:"slug"`
 }
 
-func GetAnimeByID(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
+type AnimeResponse struct {
+    ID          int32          `json:"id"`
+    Title       string         `json:"title"`
+    Description string         `json:"description"`
+    Slug        string         `json:"slug"`
+    Type        string         `json:"type"`
+    Image       string         `json:"image"`
+    ImagePort   string         `json:"image_port"`
+	Genres      []db.Genre     `json:"genres"`
+    Episodes    []db.Episode   `json:"episodes"`
+}
 
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-		return
-	}
+type AnimeWithGenre struct {
+	db.Anime
+	Genres []db.Genre `json:"genres"`
+}
+
+
+func GetAnimeBySlug(c *gin.Context) {
+	animeSlug := c.Param("animeSlug")
 
 	queries := db.New(db.DBPool)
 
-	anime, err := queries.GetAnime(c, int32(id))
+	anime, err := queries.GetAnimeBySlug(c, animeSlug)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, anime)
+	episodes, err := queries.GetEpisodesByAnimeSlug(c, animeSlug)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	genres, err := queries.GetGenresByAnimeId(c, int32(anime.ID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := AnimeResponse{
+        ID:          anime.ID,
+        Title:       anime.Title,
+        Description: anime.Description.String,
+        Slug:        anime.Slug,
+        Type:        anime.Type.String,
+        Image:       anime.Image.String,
+        ImagePort:   anime.ImagePort.String,
+		Genres:      genres,
+        Episodes:    episodes,
+		
+    }
+
+	c.JSON(http.StatusOK, response)
 }
 
 func GetAnimes(c *gin.Context) {
@@ -65,7 +102,13 @@ func CreateAnime(c *gin.Context) {
 		return
 	}
 
-	image, err := utils.ProcessImageUpload(c, "", "animes")
+	image, err := utils.ProcessImageUpload(c, "image", "", "animes_landscape")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+
+	image_port, err := utils.ProcessImageUpload(c, "image_port", "", "animes_portrait")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
@@ -86,6 +129,7 @@ func CreateAnime(c *gin.Context) {
 		Image:       pgtype.Text{String: image, Valid: true},
 		Type:        pgtype.Text{String: anime.Type, Valid: true},
 		Slug:        slug,
+		ImagePort:   pgtype.Text{String: image_port, Valid: true},
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
@@ -98,15 +142,14 @@ func CreateAnime(c *gin.Context) {
 func UpdateAnime(c *gin.Context) {
 	queries := db.New(db.DBPool)
 
-	idStr := c.Param("id")
+	idStr := c.Param("animeId")
 	id, err := strconv.Atoi(idStr)
-
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
 
-	oldAnime, err := queries.GetAnime(c, int32(id))
+	oldAnime, err := queries.GetAnimeById(c, int32(id))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -136,7 +179,13 @@ func UpdateAnime(c *gin.Context) {
 		anime.Slug = oldAnime.Slug
 	}
 
-	image, err := utils.ProcessImageUpload(c, oldAnime.Image.String, "animes")
+	image, err := utils.ProcessImageUpload(c, "image", oldAnime.Image.String, "animes_landscape")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	image_port, err := utils.ProcessImageUpload(c, "image_port", oldAnime.ImagePort.String, "animes_portrait")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -149,6 +198,7 @@ func UpdateAnime(c *gin.Context) {
 		Image:       pgtype.Text{String: image, Valid: true},
 		Type:        pgtype.Text{String: anime.Type, Valid: true},
 		Slug:        pgtype.Text{String: anime.Slug, Valid: true}.String,
+		ImagePort:   pgtype.Text{String: image_port, Valid: true},
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -161,21 +211,21 @@ func UpdateAnime(c *gin.Context) {
 func DeleteAnime(c *gin.Context) {
 	queries := db.New(db.DBPool)
 
-	idStr := c.Param("id")
+	idStr := c.Param("animeId")
 	id, err := strconv.Atoi(idStr)
-
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
 
-	oldAnime, err := queries.GetAnime(c, int32(id))
+	oldAnime, err := queries.GetAnimeById(c, int32(id))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	os.Remove(oldAnime.Image.String)
+	os.Remove(oldAnime.ImagePort.String)
 	err = queries.DeleteAnime(c, int32(id))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

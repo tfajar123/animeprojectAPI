@@ -75,3 +75,27 @@ func Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Login successful", "token": token})
 }
 
+
+func ChangeRoles(c *gin.Context) {
+	queries := db.New(db.DBPool)
+
+	var role struct {
+		Role string `form:"role" binding:"required"`
+	}
+	if err := c.ShouldBind(&role); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, exist := c.Get("user_id")
+	if !exist {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID not found"})
+		return
+	}
+	user, _ := queries.UpdateUserRole(c, db.UpdateUserRoleParams{
+		ID:   userID.(int32),
+		Role: role.Role,
+	})
+
+	c.JSON(http.StatusOK, user)
+}

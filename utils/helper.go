@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ProcessImageUpload(c *gin.Context, oldPath string, folderName string) (string, error) {
-	file, err := c.FormFile("image")
+func ProcessImageUpload(c *gin.Context, formKey string, oldPath string, folderName string) (string, error) {
+	file, err := c.FormFile(formKey)
 	if err != nil {
 		if errors.Is(err, http.ErrMissingFile) {
 			return oldPath, nil

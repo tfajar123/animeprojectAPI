@@ -1,4 +1,4 @@
--- name: GetAnime :one
+-- name: GetAnimeById :one
 SELECT * FROM anime WHERE id = $1;
 
 -- name: GetAnimes :many
@@ -8,19 +8,19 @@ SELECT * FROM anime ORDER BY id DESC;
 SELECT * FROM anime WHERE slug = $1 LIMIT 1;
 
 -- name: CreateAnime :one
-INSERT INTO anime (title, description, image, type, slug) VALUES ($1, $2, $3, $4, $5) RETURNING *;
+INSERT INTO anime (title, description, image, type, slug, image_port) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
 
 -- name: DeleteAnime :exec
 DELETE FROM anime WHERE id = $1;
 
 -- name: UpdateAnime :one
-UPDATE anime SET title = $2, description = $3, image = $4, type = $5, slug = $6 WHERE id = $1 RETURNING *;
+UPDATE anime SET title = $2, description = $3, image = $4, type = $5, slug = $6, image_port = $7 WHERE id = $1 RETURNING *;
 
 -- name: CreateGenre :one
-INSERT INTO genre (name) VALUES ($1) RETURNING *;
+INSERT INTO genre (name, slug) VALUES ($1, $2) RETURNING *;
 
--- name: GetGenre :one
-SELECT * FROM genre WHERE id = $1;
+-- name: GetGenreBySlug :one
+SELECT * FROM genre WHERE slug = $1;
 
 -- name: GetGenres :many
 SELECT * FROM genre;
@@ -29,10 +29,13 @@ SELECT * FROM genre;
 DELETE FROM genre WHERE id = $1;
 
 -- name: UpdateGenre :one
-UPDATE genre SET name = $2 WHERE id = $1 RETURNING *;
+UPDATE genre SET name = $2, slug = $3 WHERE id = $1 RETURNING *;
 
 -- name: GetGenresByAnimeId :many
 SELECT * FROM genre WHERE id IN (SELECT genre_id FROM anime_genre WHERE anime_id = $1);
+
+-- name: CheckAnimeGenreExists :one
+SELECT * FROM anime_genre WHERE anime_id = $1 AND genre_id = $2;
 
 -- name: GetAnimesByGenreId :many
 SELECT * FROM anime WHERE id IN (SELECT anime_id FROM anime_genre WHERE genre_id = $1);
@@ -46,7 +49,7 @@ DELETE FROM anime_genre WHERE anime_id = $1 AND genre_id = $2;
 -- name: CreateEpisode :one
 INSERT INTO episode (episode_number, episode_url, anime_id) VALUES ($1, $2, $3) RETURNING *;
 
--- name: GetEpisodesByAnimeId :many
+-- name: GetEpisodesByAnimeSlug :many
 SELECT e.* FROM episode e JOIN anime a ON e.anime_id = a.id WHERE a.slug = $1 ORDER BY e.episode_number ASC;
 
 -- name: CheckEpisodeExists :one
@@ -64,6 +67,7 @@ SELECT
     a.slug AS anime_slug,
     a.description AS anime_description,
     a.image AS anime_image,
+    a.image_port AS anime_image_port,
     a.type AS anime_type
 FROM episode e
 JOIN anime a ON e.anime_id = a.id
@@ -85,6 +89,9 @@ SELECT * FROM users WHERE id = $1;
 -- name: GetUserByUsername :one
 SELECT * FROM users WHERE username = $1;
 
+-- name: UpdateUserRole :one
+UPDATE users SET role = $2 WHERE id = $1 RETURNING *;
+
 -- name: UpdateUser :one
 UPDATE users SET username = $2, email = $3, password = $4, updated_at = NOW() WHERE id = $1 RETURNING *;
 
@@ -103,8 +110,8 @@ DELETE FROM comments WHERE id = $1;
 -- name: UpdateComment :one
 UPDATE comments SET content = $2 WHERE id = $1 RETURNING *;
 
--- name: GetFavoritesByUserId :many
-SELECT * FROM favorites WHERE user_id = $1;
+-- name: GetFavoritesById :many
+SELECT * FROM favorites WHERE id = $1;
 
 -- name: CreateFavorite :one
 INSERT INTO favorites (user_id, anime_id) VALUES ($1, $2) RETURNING *;
