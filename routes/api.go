@@ -7,40 +7,54 @@ import (
 )
 
 func RegisterRoutes(r *gin.Engine) {
-	r.GET("/animes/:animeSlug", controller.GetAnimeBySlug)
 	r.GET("/animes", controller.GetAnimes)
-
-	r.GET(":animeSlug/episodes/:episodeNumber", controller.GetEpisodeBySlug)
+	r.GET("/animes/:animeSlug", controller.GetAnimeBySlug)
+	r.GET("/animes/:animeSlug/episodes/:episodeNumber", controller.GetEpisodeBySlug)
 	
-
 	r.GET("/genres", controller.GetGenres)
 	r.GET("/genres/:genreSlug", controller.GetGenreBySlug)
-
+	
+	r.GET("episodes/:episodeId/comments", controller.GetCommentsByEpisodeId)
+	
+	
 	
 
+	// Route With Admin Roles
+	admin := r.Group("/admin", middlewares.AdminRoles)
+	{
+		// Manage Anime Data
+		admin.POST("/animes", controller.CreateAnime)
+		admin.PUT("/animes/:animeId", controller.UpdateAnime)
+		admin.DELETE("/animes/:animeId", controller.DeleteAnime)
+	
+		// Manage Episodes
+		admin.POST("/animes/:animeSlug/episodes", controller.CreateEpisode)
+		admin.PUT("/animes/:animeSlug/episodes/:episodeNumber", controller.UpdateEpisode)
+		admin.DELETE("/animes/:animeSlug/episodes/:episodeNumber", controller.DeleteEpisode)
+	
+		// Manage Genres
+		admin.POST("/genres", controller.CreateGenre)
+		admin.PUT("/genres/:genreSlug", controller.UpdateGenre)
+		admin.DELETE("/genres/:genreSlug", controller.DeleteGenre)
 
-	adminAuthenticated := r.Group("/")
-	adminAuthenticated.Use(middlewares.AdminRoles)
-	// Manage Anime Data
-	adminAuthenticated.POST("/animes", controller.CreateAnime)
-	adminAuthenticated.PUT("/animes/:animeId", controller.UpdateAnime)
-	adminAuthenticated.DELETE("/animes/:animeId", controller.DeleteAnime)
+		admin.POST("/animes/:animeId/genres", controller.AddAnimeGenres)
+		admin.DELETE("/animes/:animeId/genres/:genreId", controller.RemoveAnimeGenres)
+		admin.PUT("/change-roles", controller.ChangeRoles)
+	}
 
-	// Manage Episodes
-	adminAuthenticated.POST(":animeSlug/episodes", controller.CreateEpisode)
-	adminAuthenticated.PUT(":animeSlug/episodes/:episodeNumber", controller.UpdateEpisode)
-	adminAuthenticated.DELETE(":animeSlug/episodes/:episodeNumber", controller.DeleteEpisode)
 
-	// Manage Genres
-	adminAuthenticated.POST("/genres", controller.CreateGenre)
-	adminAuthenticated.PUT("/genres/:genreSlug", controller.UpdateGenre)
-	adminAuthenticated.DELETE("/genres/:genreSlug", controller.DeleteGenre)
-	adminAuthenticated.POST("/genre", controller.AddAnimeGenres)
-	adminAuthenticated.DELETE("/genre/:genreId/:animeId", controller.RemoveAnimeGenres)
+	// Route With User Roles
+	auth := r.Group("/", middlewares.Authenticate)
+	{
+		auth.GET("/favorites", controller.GetFavorites)
+		auth.POST("/animes/:animeId/favorites", controller.AddFavorites)
+		auth.DELETE("/animes/:animeId/favorites", controller.RemoveFavorites)
+	
+		auth.POST("/episodes/:episodeId/comments", controller.CreateComment)
+		auth.PUT("/comments/:commentId", controller.UpdateComment)
+		auth.DELETE("/comments/:commentId", controller.DeleteComment)
+	}
 
-	authenticated := r.Group("/")
-	authenticated.Use(middlewares.Authenticate)
-	authenticated.PUT("/change-roles", controller.ChangeRoles)
 
 
 	

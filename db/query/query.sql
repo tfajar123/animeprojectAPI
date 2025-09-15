@@ -99,7 +99,10 @@ UPDATE users SET username = $2, email = $3, password = $4, updated_at = NOW() WH
 DELETE FROM users WHERE id = $1;
 
 -- name: GetCommentsByEpisodeId :many
-SELECT * FROM comments WHERE episode_id = $1;
+SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.id WHERE episode_id = $1 ORDER BY c.created_at DESC;
+
+-- name: GetComment :one
+SELECT * FROM comments WHERE id = $1;
 
 -- name: CreateComment :one
 INSERT INTO comments (content, user_id, episode_id) VALUES ($1, $2, $3) RETURNING *;
@@ -110,11 +113,14 @@ DELETE FROM comments WHERE id = $1;
 -- name: UpdateComment :one
 UPDATE comments SET content = $2 WHERE id = $1 RETURNING *;
 
--- name: GetFavoritesById :many
-SELECT * FROM favorites WHERE id = $1;
+-- name: GetFavoritesByUserId :many
+SELECT * FROM favorites WHERE user_id = $1;
+
+-- name: CheckFavoriteExists :one
+SELECT * FROM favorites WHERE user_id = $1 AND anime_id = $2;
 
 -- name: CreateFavorite :one
 INSERT INTO favorites (user_id, anime_id) VALUES ($1, $2) RETURNING *;
 
 -- name: DeleteFavorite :exec
-DELETE FROM favorites WHERE id = $1;
+DELETE FROM favorites WHERE anime_id = $1;

@@ -56,6 +56,27 @@ func (q *Queries) CheckEpisodeExists(ctx context.Context, arg CheckEpisodeExists
 	return i, err
 }
 
+const checkFavoriteExists = `-- name: CheckFavoriteExists :one
+SELECT id, user_id, anime_id, created_at FROM favorites WHERE user_id = $1 AND anime_id = $2
+`
+
+type CheckFavoriteExistsParams struct {
+	UserID  int32 `json:"user_id"`
+	AnimeID int32 `json:"anime_id"`
+}
+
+func (q *Queries) CheckFavoriteExists(ctx context.Context, arg CheckFavoriteExistsParams) (Favorite, error) {
+	row := q.db.QueryRow(ctx, checkFavoriteExists, arg.UserID, arg.AnimeID)
+	var i Favorite
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AnimeID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createAnime = `-- name: CreateAnime :one
 INSERT INTO anime (title, description, image, type, slug, image_port) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, title, description, image, image_port, type, slug, created_at, updated_at
 `
@@ -273,11 +294,11 @@ func (q *Queries) DeleteEpisode(ctx context.Context, id int32) error {
 }
 
 const deleteFavorite = `-- name: DeleteFavorite :exec
-DELETE FROM favorites WHERE id = $1
+DELETE FROM favorites WHERE anime_id = $1
 `
 
-func (q *Queries) DeleteFavorite(ctx context.Context, id int32) error {
-	_, err := q.db.Exec(ctx, deleteFavorite, id)
+func (q *Queries) DeleteFavorite(ctx context.Context, animeID int32) error {
+	_, err := q.db.Exec(ctx, deleteFavorite, animeID)
 	return err
 }
 
@@ -409,19 +430,47 @@ func (q *Queries) GetAnimesByGenreId(ctx context.Context, genreID int32) ([]Anim
 	return items, nil
 }
 
-const getCommentsByEpisodeId = `-- name: GetCommentsByEpisodeId :many
-SELECT id, content, user_id, episode_id, created_at, updated_at FROM comments WHERE episode_id = $1
+const getComment = `-- name: GetComment :one
+SELECT id, content, user_id, episode_id, created_at, updated_at FROM comments WHERE id = $1
 `
 
-func (q *Queries) GetCommentsByEpisodeId(ctx context.Context, episodeID int32) ([]Comment, error) {
+func (q *Queries) GetComment(ctx context.Context, id int32) (Comment, error) {
+	row := q.db.QueryRow(ctx, getComment, id)
+	var i Comment
+	err := row.Scan(
+		&i.ID,
+		&i.Content,
+		&i.UserID,
+		&i.EpisodeID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCommentsByEpisodeId = `-- name: GetCommentsByEpisodeId :many
+SELECT c.id, c.content, c.user_id, c.episode_id, c.created_at, c.updated_at, u.username FROM comments c JOIN users u ON c.user_id = u.id WHERE episode_id = $1 ORDER BY c.created_at DESC
+`
+
+type GetCommentsByEpisodeIdRow struct {
+	ID        int32            `json:"id"`
+	Content   string           `json:"content"`
+	UserID    int32            `json:"user_id"`
+	EpisodeID int32            `json:"episode_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	Username  string           `json:"username"`
+}
+
+func (q *Queries) GetCommentsByEpisodeId(ctx context.Context, episodeID int32) ([]GetCommentsByEpisodeIdRow, error) {
 	rows, err := q.db.Query(ctx, getCommentsByEpisodeId, episodeID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Comment
+	var items []GetCommentsByEpisodeIdRow
 	for rows.Next() {
-		var i Comment
+		var i GetCommentsByEpisodeIdRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Content,
@@ -429,6 +478,7 @@ func (q *Queries) GetCommentsByEpisodeId(ctx context.Context, episodeID int32) (
 			&i.EpisodeID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Username,
 		); err != nil {
 			return nil, err
 		}
@@ -531,12 +581,12 @@ func (q *Queries) GetEpisodesByAnimeSlug(ctx context.Context, slug string) ([]Ep
 	return items, nil
 }
 
-const getFavoritesById = `-- name: GetFavoritesById :many
-SELECT id, user_id, anime_id, created_at FROM favorites WHERE id = $1
+const getFavoritesByUserId = `-- name: GetFavoritesByUserId :many
+SELECT id, user_id, anime_id, created_at FROM favorites WHERE user_id = $1
 `
 
-func (q *Queries) GetFavoritesById(ctx context.Context, id int32) ([]Favorite, error) {
-	rows, err := q.db.Query(ctx, getFavoritesById, id)
+func (q *Queries) GetFavoritesByUserId(ctx context.Context, userID int32) ([]Favorite, error) {
+	rows, err := q.db.Query(ctx, getFavoritesByUserId, userID)
 	if err != nil {
 		return nil, err
 	}

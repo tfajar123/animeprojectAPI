@@ -1,0 +1,1 @@
+ALTER TABLE favorites ADD CONSTRAINT unique_user_anime UNIQUE (user_id, anime_id);

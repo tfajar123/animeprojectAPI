@@ -1,0 +1,1 @@
+ALTER TABLE favorites DROP CONSTRAINT unique_user_anime;

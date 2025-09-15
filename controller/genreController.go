@@ -14,7 +14,6 @@ type GenreInput struct {
 }
 
 type AnimeGenre struct {
-	AnimeID int32 `form:"anime_id" binding:"required"`
 	GenreID int32 `form:"genre_id" binding:"required"`
 }
 
@@ -147,14 +146,20 @@ func DeleteGenre(c *gin.Context) {
 func AddAnimeGenres(c *gin.Context) {
 	queries := db.New(db.DBPool)
 
+	idStr := c.Param("animeId")
+	animeId, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
 	var animeGenre AnimeGenre
 	if err := c.ShouldBind(&animeGenre); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	_, err := queries.CheckAnimeGenreExists(c, db.CheckAnimeGenreExistsParams{
-		AnimeID: int32(animeGenre.AnimeID),
+	_, err = queries.CheckAnimeGenreExists(c, db.CheckAnimeGenreExistsParams{
+		AnimeID: int32(animeId),
 		GenreID: int32(animeGenre.GenreID),
 	})
 	if err == nil {
@@ -163,7 +168,7 @@ func AddAnimeGenres(c *gin.Context) {
 	}
 
 	_, err = queries.CreateAnimeGenre(c, db.CreateAnimeGenreParams{
-		AnimeID: int32(animeGenre.AnimeID),
+		AnimeID: int32(animeId),
 		GenreID: int32(animeGenre.GenreID),
 	})
 	if err != nil {
