@@ -22,6 +22,9 @@ INSERT INTO genre (name, slug) VALUES ($1, $2) RETURNING *;
 -- name: GetGenreBySlug :one
 SELECT * FROM genre WHERE slug = $1;
 
+-- name: GetGenreById :one
+SELECT * FROM genre WHERE id = $1;
+
 -- name: GetGenres :many
 SELECT * FROM genre;
 

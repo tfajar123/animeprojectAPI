@@ -82,8 +82,14 @@ func CreateGenre(c *gin.Context) {
 func UpdateGenre(c *gin.Context) {
 	queries := db.New(db.DBPool)
 
-	genreSlug := c.Param("genreSlug")
-	oldGenre, err := queries.GetGenreBySlug(c, genreSlug)
+	genreIdStr := c.Param("genreId")
+	genreId, err := strconv.Atoi(genreIdStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid genre ID"})
+		return
+	}
+
+	oldGenre, err := queries.GetGenreById(c, int32(genreId))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -96,6 +102,7 @@ func UpdateGenre(c *gin.Context) {
 	}
 
 	genre.Name = utils.IfEmpty(genre.Name, oldGenre.Name, "")
+	genreSlug := ""
 		
 	if genre.Name != oldGenre.Name {
 		genreSlug = utils.Slugify(genre.Name)
@@ -126,8 +133,13 @@ func UpdateGenre(c *gin.Context) {
 func DeleteGenre(c *gin.Context) {
 	queries := db.New(db.DBPool)
 
-	genreSlug := c.Param("genreSlug")
-	genre, err := queries.GetGenreBySlug(c, genreSlug)
+	genreIdStr := c.Param("genreId")
+	genreId, err := strconv.Atoi(genreIdStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid genre ID"})
+		return
+	}
+	genre, err := queries.GetGenreById(c, int32(genreId))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

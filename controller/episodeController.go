@@ -43,9 +43,15 @@ func GetEpisodeBySlug(c *gin.Context) {
 }
 
 func CreateEpisode(c *gin.Context) {
-	animeSlug := c.Param("animeSlug")
+	idStr := c.Param("animeId")
+	animeId, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
 
-	anime, err := db.New(db.DBPool).GetAnimeBySlug(c, animeSlug)
+
+	anime, err := db.New(db.DBPool).GetAnimeById(c, int32(animeId))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Anime not found"})
 		return
@@ -84,7 +90,18 @@ func CreateEpisode(c *gin.Context) {
 func UpdateEpisode(c *gin.Context) {
 	queries := db.New(db.DBPool)
 
-	animeSlug := c.Param("animeSlug")
+	idStr := c.Param("animeId")
+	animeId, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+	anime, err := db.New(db.DBPool).GetAnimeById(c, int32(animeId))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Anime not found"})
+		return
+	}
+
     episodeNumStr := c.Param("episodeNumber")
 
     episodeNum, err := strconv.Atoi(episodeNumStr)
@@ -94,7 +111,7 @@ func UpdateEpisode(c *gin.Context) {
     }
 
 	oldEpisode , err := queries.GetEpisodeBySlugAndNumber(c, db.GetEpisodeBySlugAndNumberParams{
-        Slug:          animeSlug,
+        Slug:          anime.Slug,
         EpisodeNumber: int32(episodeNum),
     })
 	if err != nil {
@@ -123,7 +140,18 @@ func UpdateEpisode(c *gin.Context) {
 
 func DeleteEpisode(c *gin.Context) {
 	
-	animeSlug := c.Param("animeSlug")
+	idStr := c.Param("animeId")
+	animeId, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+	anime, err := db.New(db.DBPool).GetAnimeById(c, int32(animeId))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Anime not found"})
+		return
+	}
+
     episodeNumStr := c.Param("episodeNumber")
 	
     episodeNum, err := strconv.Atoi(episodeNumStr)
@@ -134,7 +162,7 @@ func DeleteEpisode(c *gin.Context) {
 	queries := db.New(db.DBPool)
 	
     episode, err := queries.GetEpisodeBySlugAndNumber(c, db.GetEpisodeBySlugAndNumberParams{
-        Slug:          animeSlug,
+        Slug:          anime.Slug,
         EpisodeNumber: int32(episodeNum),
     })
 

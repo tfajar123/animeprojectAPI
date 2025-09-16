@@ -10,7 +10,6 @@ import (
 
 type CommentsInput struct {
 	Content string `form:"content" binding:"required"`
-	EpisodeId string `form:"episode_id" binding:"required"`
 }
 
 func GetCommentsByEpisodeId(c *gin.Context) {
@@ -43,7 +42,7 @@ func CreateComment(c *gin.Context) {
 	}
 
 	var comment CommentsInput
-	if err := c.ShouldBindJSON(&comment); err != nil {
+	if err := c.ShouldBind(&comment); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -77,8 +76,8 @@ func UpdateComment(c *gin.Context) {
 		return
 	}
 
-	var comment db.UpdateCommentParams
-	if err := c.ShouldBindJSON(&comment); err != nil {
+	var comment CommentsInput
+	if err := c.ShouldBind(&comment); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

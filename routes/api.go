@@ -28,14 +28,14 @@ func RegisterRoutes(r *gin.Engine) {
 		admin.DELETE("/animes/:animeId", controller.DeleteAnime)
 	
 		// Manage Episodes
-		admin.POST("/animes/:animeSlug/episodes", controller.CreateEpisode)
-		admin.PUT("/animes/:animeSlug/episodes/:episodeNumber", controller.UpdateEpisode)
-		admin.DELETE("/animes/:animeSlug/episodes/:episodeNumber", controller.DeleteEpisode)
+		admin.POST("/animes/:animeId/episodes", controller.CreateEpisode)
+		admin.PUT("/animes/:animeId/episodes/:episodeNumber", controller.UpdateEpisode)
+		admin.DELETE("/animes/:animeId/episodes/:episodeNumber", controller.DeleteEpisode)
 	
 		// Manage Genres
 		admin.POST("/genres", controller.CreateGenre)
-		admin.PUT("/genres/:genreSlug", controller.UpdateGenre)
-		admin.DELETE("/genres/:genreSlug", controller.DeleteGenre)
+		admin.PUT("/genres/:genreId", controller.UpdateGenre)
+		admin.DELETE("/genres/:genreId", controller.DeleteGenre)
 
 		admin.POST("/animes/:animeId/genres", controller.AddAnimeGenres)
 		admin.DELETE("/animes/:animeId/genres/:genreId", controller.RemoveAnimeGenres)

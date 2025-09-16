@@ -610,6 +610,23 @@ func (q *Queries) GetFavoritesByUserId(ctx context.Context, userID int32) ([]Fav
 	return items, nil
 }
 
+const getGenreById = `-- name: GetGenreById :one
+SELECT id, name, slug, created_at, updated_at FROM genre WHERE id = $1
+`
+
+func (q *Queries) GetGenreById(ctx context.Context, id int32) (Genre, error) {
+	row := q.db.QueryRow(ctx, getGenreById, id)
+	var i Genre
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getGenreBySlug = `-- name: GetGenreBySlug :one
 SELECT id, name, slug, created_at, updated_at FROM genre WHERE slug = $1
 `
